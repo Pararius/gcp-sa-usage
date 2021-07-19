@@ -1,23 +1,19 @@
 #!/usr/bin/env python
-from google.cloud import monitoring_v3
-from google.oauth2 import service_account
-import googleapiclient.discovery
-
 import argparse
 import datetime
-import time
 import sys
+import time
+
+import googleapiclient.discovery
+from google.cloud import monitoring_v3
+from google.oauth2 import service_account
 
 
 def get_projects():
     service = googleapiclient.discovery.build("cloudresourcemanager", "v3")
     result = dict()
 
-    result = (
-        service.projects()
-        .list()
-        .execute()
-    )
+    result = service.projects().list().execute()
 
     return result.get("projects")
 
@@ -72,19 +68,33 @@ def list_sa_uses(service_accounts, project_id, time_range):
 
     sa_uses = get_service_account_usage(project_id, time_range)
     for sa in service_accounts:
-        print("{project},{sa},{uses}".format(project=project_id, sa=sa["email"], uses=sa_uses.get(sa["uniqueId"], 0)))
+        print(
+            "{project},{sa},{uses}".format(
+                project=project_id, sa=sa["email"], uses=sa_uses.get(sa["uniqueId"], 0)
+            )
+        )
 
 
 def main():
-    parser = argparse.ArgumentParser(description='List service account usage.')
-    parser.add_argument('--project', type=str, help='List service account usage for the specific project')
+    parser = argparse.ArgumentParser(description="List service account usage.")
+    parser.add_argument(
+        "--project",
+        type=str,
+        help="List service account usage for the specific project",
+    )
     group_time_range = parser.add_mutually_exclusive_group()
-    group_time_range.add_argument('--hours', type=int, default=0, help='List usage for the last number of hours')
-    group_time_range.add_argument('--days', type=int, default=0, help='List usage for the last number of days')
+    group_time_range.add_argument(
+        "--hours", type=int, default=0, help="List usage for the last number of hours"
+    )
+    group_time_range.add_argument(
+        "--days", type=int, default=0, help="List usage for the last number of days"
+    )
     group_time_range.set_defaults(hours=2)
     args = parser.parse_args()
 
-    time_range = datetime.timedelta(**{k:v for k,v in vars(args).items() if k in ['hours', 'days']})
+    time_range = datetime.timedelta(
+        **{k: v for k, v in vars(args).items() if k in ["hours", "days"]}
+    )
 
     if args.project:
         service_accounts = get_service_accounts(args.project)
@@ -94,7 +104,6 @@ def main():
     if args.project != None:
         print("Project not specified!")
         return 1
-
 
     projects = get_projects()
     for project in projects:
