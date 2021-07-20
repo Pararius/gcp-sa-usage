@@ -9,15 +9,6 @@ from google.cloud import monitoring_v3
 from google.oauth2 import service_account
 
 
-def get_projects():
-    service = googleapiclient.discovery.build("cloudresourcemanager", "v3")
-    result = dict()
-
-    result = service.projects().list().execute()
-
-    return result.get("projects")
-
-
 def get_service_accounts(project_id):
     service = googleapiclient.discovery.build("iam", "v1")
 
@@ -80,6 +71,7 @@ def main():
     parser.add_argument(
         "--project",
         type=str,
+        required=True,
         help="List service account usage for the specific project",
     )
     group_time_range = parser.add_mutually_exclusive_group()
@@ -96,22 +88,8 @@ def main():
         **{k: v for k, v in vars(args).items() if k in ["hours", "days"]}
     )
 
-    if args.project:
-        service_accounts = get_service_accounts(args.project)
-        list_sa_uses(service_accounts, args.project, time_range)
-        return
-
-    if args.project != None:
-        print("Project not specified!")
-        return 1
-
-    projects = get_projects()
-    for project in projects:
-        if project["lifecycleState"] != "ACTIVE":
-            continue
-
-        service_accounts = get_service_accounts(project["projectId"])
-        list_sa_uses(service_accounts, project["projectId"], time_range)
+    service_account_usage = get_service_accounts(args.project)
+    list_sa_uses(service_account_usage, args.project, time_range)
 
 
 if __name__ == "__main__":
