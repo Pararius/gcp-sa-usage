@@ -15,7 +15,7 @@ def get_service_accounts(project_id):
     result = (
         service.projects()
         .serviceAccounts()
-        .list(name="projects/" + project_id)
+        .list(name="projects/{project_id}".format(project_id=project_id))
         .execute()
     )
 
