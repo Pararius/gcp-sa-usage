@@ -19,7 +19,17 @@ def get_service_accounts(project_id):
         .execute()
     )
 
-    return result.get("accounts")
+    service_accounts = dict()
+    for sa in result.get("accounts"):
+        service_account_id = sa["uniqueId"]
+        service_accounts[service_account_id] = {
+            "displayName": sa["displayName"],
+            "email": sa["email"],
+            "keys": {},
+            "totalUses": 0,
+        }
+
+    return service_accounts
 
 
 def get_service_account_key_metrics(project_id, time_range):
@@ -59,25 +69,13 @@ def get_service_account_key_metrics(project_id, time_range):
     return sa_usage
 
 
-def list_sa_key_uses(service_accounts, project_id, time_range):
-    if not service_accounts:
-        return
-
+def get_sa_key_usage(service_accounts, project_id, time_range):
     sa_usage = get_service_account_key_metrics(project_id, time_range)
-    for sa in service_accounts:
-        account_usage = sa_usage.get(sa["uniqueId"], {})
-        print(
-            "{sa}: {sa_uses} ({project})".format(
-                project=project_id,
-                sa=sa["email"],
-                sa_uses=account_usage.get("total_uses", 0),
-            )
-        )
+    for sa_id, usage in sa_usage.items():
+        service_accounts[sa_id]["totalUses"] = usage["total_uses"]
+        service_accounts[sa_id]["keys"] = usage["keys"]
 
-        for key, key_uses in account_usage.get("keys", {}).items():
-            print("  key({key}): {uses}".format(key=key, uses=key_uses))
-
-        print()
+    return service_accounts
 
 
 def main():
@@ -98,12 +96,27 @@ def main():
     group_time_range.set_defaults(hours=2)
     args = parser.parse_args()
 
+    service_accounts = get_service_accounts(args.project)
+    if not service_accounts:
+        return
+
     time_range = datetime.timedelta(
         **{k: v for k, v in vars(args).items() if k in ["hours", "days"]}
     )
 
-    service_account_usage = get_service_accounts(args.project)
-    list_sa_key_uses(service_account_usage, args.project, time_range)
+    service_account_usage = get_sa_key_usage(service_accounts, args.project, time_range)
+    for account_usage in service_account_usage.values():
+        print(
+            "{sa}: {sa_uses}".format(
+                sa=account_usage["email"],
+                sa_uses=account_usage["totalUses"],
+            )
+        )
+
+        for key, key_uses in account_usage["keys"].items():
+            print("  key({key}): {uses}".format(key=key, uses=key_uses))
+
+        print()
 
 
 if __name__ == "__main__":
