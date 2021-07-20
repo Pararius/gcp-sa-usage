@@ -22,7 +22,7 @@ def get_service_accounts(project_id):
     return result.get("accounts")
 
 
-def get_service_account_usage(project_id, time_range):
+def get_service_account_key_metrics(project_id, time_range):
     now = time.time()
     seconds = int(now)
     then = seconds - int(time_range.total_seconds())
@@ -44,28 +44,28 @@ def get_service_account_usage(project_id, time_range):
         }
     )
 
-    sa_uses = dict()
+    sa_usage = dict()
     for result in results:
         service_account_id = result.resource.labels["unique_id"]
         key_id = result.metric.labels["key_id"]
 
-        sa_uses.setdefault(service_account_id, {"total_uses": 0, "keys": {}})["keys"][
+        sa_usage.setdefault(service_account_id, {"total_uses": 0, "keys": {}})["keys"][
             key_id
         ] = 0
         for point in result.points:
-            sa_uses[service_account_id]["total_uses"] += point.value.int64_value
-            sa_uses[service_account_id]["keys"][key_id] += point.value.int64_value
+            sa_usage[service_account_id]["total_uses"] += point.value.int64_value
+            sa_usage[service_account_id]["keys"][key_id] += point.value.int64_value
 
-    return sa_uses
+    return sa_usage
 
 
 def list_sa_key_uses(service_accounts, project_id, time_range):
     if not service_accounts:
         return
 
-    sa_uses = get_service_account_usage(project_id, time_range)
+    sa_usage = get_service_account_key_metrics(project_id, time_range)
     for sa in service_accounts:
-        account_usage = sa_uses.get(sa["uniqueId"], {})
+        account_usage = sa_usage.get(sa["uniqueId"], {})
         print(
             "{sa}: {sa_uses} ({project})".format(
                 project=project_id,
