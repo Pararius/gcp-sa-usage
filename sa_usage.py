@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import datetime
+import json
 import sys
 import time
 
@@ -128,18 +129,8 @@ def main():
     )
 
     service_account_usage = get_sa_key_usage(service_accounts, args.project, time_range)
-    for account_usage in service_account_usage.values():
-        print(
-            "{sa}: {sa_uses}".format(
-                sa=account_usage["email"],
-                sa_uses=account_usage["totalUses"],
-            )
-        )
 
-        for key, key_uses in account_usage["keys"].items():
-            print("  key({key}): {uses}".format(key=key, uses=key_uses))
-
-        print()
+    print(json.dumps(service_account_usage))
 
 
 if __name__ == "__main__":
