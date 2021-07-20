@@ -104,14 +104,14 @@ def main():
         required=True,
         help="List service account usage for the specific project",
     )
-    group_time_range = parser.add_mutually_exclusive_group()
+    group_time_range = parser.add_mutually_exclusive_group(required=True)
     group_time_range.add_argument(
         "--hours", type=int, default=0, help="List usage for the last number of hours"
     )
     group_time_range.add_argument(
         "--days", type=int, default=0, help="List usage for the last number of days"
     )
-    group_time_range.set_defaults(hours=2)
+    group_time_range.set_defaults()
     args = parser.parse_args()
 
     service_accounts = get_service_accounts(args.project)
