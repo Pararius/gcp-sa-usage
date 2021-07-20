@@ -78,26 +78,20 @@ def get_service_account_key_metrics(project_id, time_range):
         }
     )
 
-    sa_usage = dict()
     for result in results:
         service_account_id = result.resource.labels["unique_id"]
         key_id = result.metric.labels["key_id"]
 
-        sa_usage.setdefault(service_account_id, {"total_uses": 0, "keys": {}})["keys"][
-            key_id
-        ] = 0
         for point in result.points:
-            sa_usage[service_account_id]["total_uses"] += point.value.int64_value
-            sa_usage[service_account_id]["keys"][key_id] += point.value.int64_value
-
-    return sa_usage
+            yield (service_account_id, key_id, point.value.int64_value)
 
 
 def get_sa_key_usage(service_accounts, project_id, time_range):
-    sa_usage = get_service_account_key_metrics(project_id, time_range)
-    for sa_id, usage in sa_usage.items():
-        service_accounts[sa_id]["totalUses"] = usage["total_uses"]
-        service_accounts[sa_id]["keys"] |= usage["keys"]
+    for service_account_id, key_id, datapoint_value in get_service_account_key_metrics(
+        project_id, time_range
+    ):
+        service_accounts[service_account_id]["totalUses"] += datapoint_value
+        service_accounts[service_account_id]["keys"][key_id] += datapoint_value
 
     return service_accounts
 
