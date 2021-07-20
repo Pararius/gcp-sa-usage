@@ -22,14 +22,37 @@ def get_service_accounts(project_id):
     service_accounts = dict()
     for sa in result.get("accounts"):
         service_account_id = sa["uniqueId"]
+        service_account_keys = {
+            key: 0 for key in get_service_account_keys(project_id, service_account_id)
+        }
         service_accounts[service_account_id] = {
             "displayName": sa["displayName"],
             "email": sa["email"],
-            "keys": {},
+            "keys": service_account_keys,
             "totalUses": 0,
         }
 
     return service_accounts
+
+
+def get_service_account_keys(project_id, service_account_id):
+    service = googleapiclient.discovery.build("iam", "v1")
+
+    result = (
+        service.projects()
+        .serviceAccounts()
+        .keys()
+        .list(
+            name="projects/{project_id}/serviceAccounts/{service_account_id}".format(
+                project_id=project_id,
+                service_account_id=service_account_id,
+            )
+        )
+        .execute()
+    )
+
+    for key in result.get("keys"):
+        yield key["name"].split("/")[-1]
 
 
 def get_service_account_key_metrics(project_id, time_range):
@@ -73,7 +96,7 @@ def get_sa_key_usage(service_accounts, project_id, time_range):
     sa_usage = get_service_account_key_metrics(project_id, time_range)
     for sa_id, usage in sa_usage.items():
         service_accounts[sa_id]["totalUses"] = usage["total_uses"]
-        service_accounts[sa_id]["keys"] = usage["keys"]
+        service_accounts[sa_id]["keys"] |= usage["keys"]
 
     return service_accounts
 
