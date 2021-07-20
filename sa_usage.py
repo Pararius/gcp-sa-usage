@@ -38,7 +38,7 @@ def get_service_account_usage(project_id, time_range):
     results = client.list_time_series(
         request={
             "name": "projects/{project_id}".format(project_id=project_id),
-            "filter": 'metric.type = "iam.googleapis.com/service_account/authn_events_count"',
+            "filter": 'metric.type = "iam.googleapis.com/service_account/key/authn_events_count"',
             "interval": interval,
             "view": monitoring_v3.ListTimeSeriesRequest.TimeSeriesView.FULL,
         }
@@ -46,24 +46,38 @@ def get_service_account_usage(project_id, time_range):
 
     sa_uses = dict()
     for result in results:
-        sa_uses[result.resource.labels["unique_id"]] = 0
+        service_account_id = result.resource.labels["unique_id"]
+        key_id = result.metric.labels["key_id"]
+
+        sa_uses.setdefault(service_account_id, {"total_uses": 0, "keys": {}})["keys"][
+            key_id
+        ] = 0
         for point in result.points:
-            sa_uses[result.resource.labels["unique_id"]] += point.value.int64_value
+            sa_uses[service_account_id]["total_uses"] += point.value.int64_value
+            sa_uses[service_account_id]["keys"][key_id] += point.value.int64_value
 
     return sa_uses
 
 
-def list_sa_uses(service_accounts, project_id, time_range):
-    if service_accounts == None:
+def list_sa_key_uses(service_accounts, project_id, time_range):
+    if not service_accounts:
         return
 
     sa_uses = get_service_account_usage(project_id, time_range)
     for sa in service_accounts:
+        account_usage = sa_uses.get(sa["uniqueId"], {})
         print(
-            "{project},{sa},{uses}".format(
-                project=project_id, sa=sa["email"], uses=sa_uses.get(sa["uniqueId"], 0)
+            "{sa}: {sa_uses} ({project})".format(
+                project=project_id,
+                sa=sa["email"],
+                sa_uses=account_usage.get("total_uses", 0),
             )
         )
+
+        for key, key_uses in account_usage.get("keys", {}).items():
+            print("  key({key}): {uses}".format(key=key, uses=key_uses))
+
+        print()
 
 
 def main():
@@ -89,7 +103,7 @@ def main():
     )
 
     service_account_usage = get_service_accounts(args.project)
-    list_sa_uses(service_account_usage, args.project, time_range)
+    list_sa_key_uses(service_account_usage, args.project, time_range)
 
 
 if __name__ == "__main__":
